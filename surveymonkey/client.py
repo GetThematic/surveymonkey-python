@@ -192,7 +192,7 @@ class Client(object):
         """
         endpoint = "/surveys"
         url = API_URL + endpoint
-        return self._get(url)
+        return self._get(url, params={'per_page':500})
 
     def get_specific_survey(self, survey_id):
         """
@@ -732,8 +732,8 @@ class Client(object):
 
         :return:
         """
-        error_code = error['error']
-        error_message = error['message']
+        error_code = error.get('error')
+        error_message = error.get('message')
         if error_code == "1000":
             raise BadRequestError(error_message)
         elif error_code == "1001":
