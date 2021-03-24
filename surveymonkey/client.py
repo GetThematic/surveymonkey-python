@@ -816,4 +816,4 @@ class Client(object):
         elif error_code == "1053":
             raise UserDeletedError(error_message)
         else:
-            raise UnknownError("UNKNOWN ERROR: {}".format(error['message']))
+            raise UnknownError("UNKNOWN ERROR: {}".format(error_message)
