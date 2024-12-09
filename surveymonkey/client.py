@@ -33,7 +33,9 @@ ACCESS_TOKEN_URL = "/oauth/token"
 
 class Client(object):
 
-    def __init__(self, client_id=None, client_secret=None, redirect_uri=None, access_token=None, base_url=BASE_URL):
+    def __init__(self, client_id=None, client_secret=None, redirect_uri=None, access_token=None, base_url=None):
+        if base_url is None:
+            base_url = BASE_URL
 
         self.code = None
         self.client_id = client_id
