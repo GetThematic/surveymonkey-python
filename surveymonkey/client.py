@@ -3,33 +3,45 @@ import requests
 from urllib.parse import urlencode
 from math import ceil
 
-from surveymonkey.exceptions import UnknownError, BadRequestError, AuthorizationError, PermissionError, \
-    ResourceNotFoundError, ResourceConflictError, RequestEntityTooLargeError, RateLimitReachedError, \
-    InternalServerError, UserSoftDeletedError, UserDeletedError
+from surveymonkey.exceptions import (
+    UnknownError,
+    BadRequestError,
+    AuthorizationError,
+    PermissionError,
+    ResourceNotFoundError,
+    ResourceConflictError,
+    RequestEntityTooLargeError,
+    RateLimitReachedError,
+    InternalServerError,
+    UserSoftDeletedError,
+    UserDeletedError,
+)
 
-'''
+"""
 Token expiration and revocation
 Our access tokens don’t currently expire but may in the future. We’ll warn all developers before making changes.
 
 Access tokens can be revoked by the user. If this happens, you’ll get a JSON-encoded response body including a key 
 statuswith a value of 1 and a key errmsg with the value of Client revoked access grant when making an API request. 
 If you get this response, you’ll need to complete OAuth again.
-'''
+"""
 
 BASE_URL = "https://api.surveymonkey.com"
-API_URL = "https://api.surveymonkey.com/v3"
 AUTH_CODE = "/oauth/authorize"
 ACCESS_TOKEN_URL = "/oauth/token"
 
 
 class Client(object):
 
-    def __init__(self, client_id=None, client_secret=None, redirect_uri=None, access_token=None):
+    def __init__(self, client_id=None, client_secret=None, redirect_uri=None, access_token=None, base_url=BASE_URL):
+
         self.code = None
         self.client_id = client_id
         self.redirect_uri = redirect_uri
         self.client_secret = client_secret
         self._access_token = access_token
+        self.base_url = base_url
+        self.api_url = f"{self.base_url}/v3"
 
     # Authorization
     def get_authorization_url(self):
@@ -37,8 +49,8 @@ class Client(object):
 
         :return:
         """
-        params = {'client_id': self.client_id, 'redirect_uri': self.redirect_uri, 'response_type': 'code'}
-        url = BASE_URL + AUTH_CODE + '?' + urlencode(params)
+        params = {"client_id": self.client_id, "redirect_uri": self.redirect_uri, "response_type": "code"}
+        url = self.base_url + AUTH_CODE + "?" + urlencode(params)
         return url
 
     def exchange_code(self, code):
@@ -47,11 +59,16 @@ class Client(object):
         :param code:
         :return:
         """
-        params = {'code': code, 'client_id': self.client_id, 'client_secret': self.client_secret,
-                  'redirect_uri': self.redirect_uri, 'grant_type': 'authorization_code'}
-        url = BASE_URL + ACCESS_TOKEN_URL
+        params = {
+            "code": code,
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "redirect_uri": self.redirect_uri,
+            "grant_type": "authorization_code",
+        }
+        url = self.base_url + ACCESS_TOKEN_URL
         response = requests.post(url, data=params)
-        if response.status_code == 200 and 'access_token' in response.text:
+        if response.status_code == 200 and "access_token" in response.text:
             return response.text
         else:
             return False
@@ -70,7 +87,7 @@ class Client(object):
         :return:
         """
         if isinstance(token, dict):
-            self._access_token = token['access_token']
+            self._access_token = token["access_token"]
         else:
             self._access_token = token
 
@@ -81,7 +98,7 @@ class Client(object):
         :return:
         """
         endpoint = "/users/me"
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def get_user_workgroup(self, user_id):
@@ -90,7 +107,7 @@ class Client(object):
         :return:
         """
         endpoint = "/users/{0}/workgroups".format(user_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def get_shared_resources_to_user(self, user_id):
@@ -99,7 +116,7 @@ class Client(object):
         :return:
         """
         endpoint = "/users/{user_id}/shared".format(user_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def get_authenticated_user_group(self):
@@ -108,7 +125,7 @@ class Client(object):
         :return:
         """
         endpoint = "/groups"
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def get_group_details(self, group_id):
@@ -118,7 +135,7 @@ class Client(object):
         :return:
         """
         endpoint = "/groups/{0}".format(group_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def get_group_members(self, group_id):
@@ -128,7 +145,7 @@ class Client(object):
         :return:
         """
         endpoint = "/groups/{0}/members".format(group_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def get_group_member_detail(self, group_id, member_id):
@@ -139,7 +156,7 @@ class Client(object):
         :return:
         """
         endpoint = "/groups/{0}/members".format(group_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def get_events_list(self):
@@ -147,9 +164,22 @@ class Client(object):
         List all possible events to subscribe
         :return:
         """
-        return ["response_completed", "response_disqualified", "response_updated", "response_created",
-                "response_deleted", "response_overquota", "survey_created", "survey_updated", "survey_deleted",
-                "collector_created", "collector_updated", "collector_deleted", "app_installed", "app_uninstalled"]
+        return [
+            "response_completed",
+            "response_disqualified",
+            "response_updated",
+            "response_created",
+            "response_deleted",
+            "response_overquota",
+            "survey_created",
+            "survey_updated",
+            "survey_deleted",
+            "collector_created",
+            "collector_updated",
+            "collector_deleted",
+            "app_installed",
+            "app_uninstalled",
+        ]
 
     def get_webhooks_list(self):
         """
@@ -157,7 +187,7 @@ class Client(object):
         :return:
         """
         endpoint = "/webhooks"
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def create_webhook(self, survey_id, callback_uri, event, webhook_name, object_type):
@@ -165,15 +195,9 @@ class Client(object):
         Create webhook - subscribe to an event
         :return:
         """
-        payload = {
-            "name": webhook_name,
-            "event_type": event,
-            "object_type": object_type,
-            "object_ids": survey_id,
-            "subscription_url": callback_uri
-        }
+        payload = {"name": webhook_name, "event_type": event, "object_type": object_type, "object_ids": survey_id, "subscription_url": callback_uri}
         endpoint = "/webhooks"
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._post(url, json=payload)
 
     def delete_webhook(self, webhook_id):
@@ -182,8 +206,8 @@ class Client(object):
         :param webhook_id: id of specific webhook or subscription to delete.
         :return:
         """
-        endpoint = '/webhooks/{0}'.format(webhook_id)
-        url = API_URL + endpoint
+        endpoint = "/webhooks/{0}".format(webhook_id)
+        url = self.api_url + endpoint
         return self._delete(url)
 
     def get_survey_lists(self):
@@ -192,18 +216,18 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys"
-        url = API_URL + endpoint
-        return self._get(url, params={'per_page':500})
+        url = self.api_url + endpoint
+        return self._get(url, params={"per_page": 500})
 
     def get_survey_lists_bulk(self, params=None):
         """
         List all created surveys, allows for params to be added to the request, (eg. pagination).
-        :param params: a dict of params to add to the request, possible values can be 
+        :param params: a dict of params to add to the request, possible values can be
         found at https://developer.surveymonkey.com/api/v3/#surveys
         :return:
         """
         endpoint = "/surveys"
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url, params=params)
 
     def get_specific_survey(self, survey_id):
@@ -213,7 +237,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{}".format(survey_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def modify_specific_survey(self, survey_id, **kwargs):
@@ -231,14 +255,14 @@ class Client(object):
                 be ommitted from survey, type: String
             buttons_text.done_button, required: No, description: Button text, type: String
             custom_variables, required: No, description: Dictionary of survey variables, type: Object
-            footer, required: No (default=true), description: If false, SurveyMonkey’s footer is not displayed
+            footer, required: No (default=true), description: If false, SurveyMonkey���s footer is not displayed
                 type: Boolean
             folder_id, required: No, description: If specified, adds the survey to the folder with that id.
                 type: String
         :return:
         """
         endpoint = "/surveys/{}".format(survey_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._patch(url, json=kwargs)
 
     def delete_survey(self, survey_id):
@@ -248,7 +272,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{}".format(survey_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._delete(url)
 
     def get_survey_details(self, survey_id):
@@ -258,7 +282,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{0}/details".format(survey_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def get_survey_categories(self):
@@ -267,7 +291,7 @@ class Client(object):
         :return:
         """
         endpoint = "/survey_categories"
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def get_survey_templates(self):
@@ -278,7 +302,7 @@ class Client(object):
             This endpoint returns SurveyMonkey’s template list.
         """
         endpoint = "/survey_templates"
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def get_survey_languages(self):
@@ -287,7 +311,7 @@ class Client(object):
         :return:
         """
         endpoint = "/survey_languages"
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def get_survey_pages(self, survey_id):
@@ -297,7 +321,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{}/pages".format(survey_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def create_new_empty_survey_page(self, survey_id, **kwags):
@@ -311,7 +335,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{}/pages".format(survey_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._post(url, json=kwags)
 
     def get_survey_page_details(self, survey_id, page_id):
@@ -322,7 +346,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{0}/pages/{1}".format(survey_id, page_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def modify_survey_page(self, survey_id, page_id, **kwargs):
@@ -337,7 +361,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{0}/pages/{1}".format(survey_id, page_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._patch(url, json=kwargs)
 
     def delete_survey_page(self, survey_id, page_id):
@@ -348,7 +372,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{0}/pages/{1}".format(survey_id, page_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._delete(url)
 
     def get_survey_page_questions(self, survey_id, page_id):
@@ -359,7 +383,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{0}/pages/{1}/questions".format(survey_id, page_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def create_survey_page_question(self, survey_id, page_id, **kwargs):
@@ -437,7 +461,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{0}/pages/{1}/questions".format(survey_id, page_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._post(url, json=kwargs)
 
     def get_specific_question(self, survey_id, page_id, question_id):
@@ -449,7 +473,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{0}/pages/{1}/questions/{2}".format(survey_id, page_id, question_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def modify_specific_question(self, survey_id, page_id, question_id, **kwargs):
@@ -528,7 +552,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{0}/pages/{1}/questions/{2}".format(survey_id, page_id, question_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._patch(url, json=kwargs)
 
     def delete_question(self, survey_id, page_id, question_id):
@@ -540,7 +564,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{0}/pages/{1}/questions/{2}".format(survey_id, page_id, question_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._delete(url)
 
     def get_questions_bank(self):
@@ -549,7 +573,7 @@ class Client(object):
         :return:
         """
         endpoint = "/question_bank/questions"
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def get_survey_response(self, survey_id):
@@ -559,7 +583,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{}/responses/".format(survey_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def get_survey_response_bulk(self, survey_id):
@@ -569,7 +593,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{}/responses/bulk".format(survey_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def create_survey_from_template_or_existing_survey(self, title=None, template_id=None, survey_id=None):
@@ -580,13 +604,9 @@ class Client(object):
         :param survey_id: Survey id to copy from, not required, String
         :return:
         """
-        payload = {
-            "title": title,
-            "from_template_id": template_id,
-            "from_survey_id": survey_id
-        }
+        payload = {"title": title, "from_template_id": template_id, "from_survey_id": survey_id}
         endpoint = "/surveys"
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._post(url, json=payload)
 
     def create_new_blank_survey(self, **kwargs):
@@ -607,7 +627,7 @@ class Client(object):
                 type: Boolean
             folder_id, required: No, description: If specified, adds the survey to the folder with that id.	type: String
             quiz_options, required: No, description: An object describing the quiz settings, if this survey is a quiz
-            	type: Object
+                type: Object
             quiz_options.is_quiz_mode, required: Yes, description: On/off toggle for setting this survey as a quiz
                 type: Boolean
             quiz_options.default_question_feedback, required: No, description: An object containing the default
@@ -634,7 +654,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys"
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._post(url, json=kwargs)
 
     def get_survey_folders(self):
@@ -643,7 +663,7 @@ class Client(object):
         :return:
         """
         endpoint = "/survey_folders"
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def create_survey_folder(self, **kwargs):
@@ -654,7 +674,7 @@ class Client(object):
         :return:
         """
         endpoint = "/survey_folders"
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._post(url, json=kwargs)
 
     def get_survey_translations(self, survey_id):
@@ -664,7 +684,7 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{0}/languages".format(survey_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     def get_responses(self, survey_id):
@@ -674,40 +694,38 @@ class Client(object):
         :return:
         """
         endpoint = "/surveys/{0}/responses/".format(survey_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
-    def get_response_bulk(self, survey_id,params=None):
+    def get_response_bulk(self, survey_id, params=None):
         """
         Retrieves a list of full expanded responses, including answers to all questions
         :param survey_id: id of survey to responses from
-        :param params: a dict of params to add to the request, possible values can be 
+        :param params: a dict of params to add to the request, possible values can be
                 found at https://developer.surveymonkey.com/api/v3/#surveys-id-responses-bulk
         :return:
         """
         endpoint = "/surveys/{0}/responses/bulk".format(survey_id)
 
-        url = API_URL + endpoint
-        return self._get(url,params=params)
+        url = self.api_url + endpoint
+        return self._get(url, params=params)
 
     def get_all_pages_response(self, survey_id, per_page=100) -> list:
         """Get bulk responses from all pages.
 
         :return list of bulk responses"""
         all_resp = []
-        params = {'per_page': per_page}
+        params = {"per_page": per_page}
         resp = self.get_response_bulk(survey_id, params=params)
-        pages = ceil(resp['total']/per_page)
+        pages = ceil(resp["total"] / per_page)
         if pages > 1:
             all_resp.append(resp)
             if pages == 2:
-                params = {'per_page': per_page,
-                          'page': 2}
+                params = {"per_page": per_page, "page": 2}
                 all_resp.append(self.get_response_bulk(survey_id, params=params))
             else:
-                for page in range(2, pages+1, 1):
-                    params = {'per_page': per_page,
-                              'page': page}
+                for page in range(2, pages + 1, 1):
+                    params = {"per_page": per_page, "page": page}
                     all_resp.append(self.get_response_bulk(survey_id, params=params))
             return all_resp
         else:
@@ -724,24 +742,24 @@ class Client(object):
 
         """
         endpoint = "/surveys/{0}/responses/{1}/details".format(survey_id, response_id)
-        url = API_URL + endpoint
+        url = self.api_url + endpoint
         return self._get(url)
 
     # Communications
     def _get(self, endpoint, **kwargs):
-        return self._request('GET', endpoint, **kwargs)
+        return self._request("GET", endpoint, **kwargs)
 
     def _post(self, endpoint, **kwargs):
-        return self._request('POST', endpoint, **kwargs)
+        return self._request("POST", endpoint, **kwargs)
 
     def _put(self, endpoint, **kwargs):
-        return self._request('PUT', endpoint, **kwargs)
+        return self._request("PUT", endpoint, **kwargs)
 
     def _patch(self, endpoint, **kwargs):
-        return self._request('PATCH', endpoint, **kwargs)
+        return self._request("PATCH", endpoint, **kwargs)
 
     def _delete(self, endpoint, **kwargs):
-        return self._request('DELETE', endpoint, **kwargs)
+        return self._request("DELETE", endpoint, **kwargs)
 
     def _request(self, method, url, **kwargs):
         _headers = {"Authorization": "Bearer %s" % self._access_token, "Content-Type": "application/json"}
@@ -749,7 +767,7 @@ class Client(object):
 
     def _parse(self, response):
         status_code = response.status_code
-        if 'application/json' in response.headers['Content-Type']:
+        if "application/json" in response.headers["Content-Type"]:
             r = response.json()
         else:
             r = response.text
@@ -767,8 +785,8 @@ class Client(object):
 
         :return:
         """
-        error_code = error.get('error')
-        error_message = error.get('message')
+        error_code = error.get("error")
+        error_message = error.get("message")
         if error_code == "1000":
             raise BadRequestError(error_message)
         elif error_code == "1001":
